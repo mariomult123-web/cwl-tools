@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CWL Tools</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/favicon-64.png">
+<meta name="theme-color" content="#0c0818">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="config.js"></script>
+<style>
+  /* ============================================================
+     TOKEN DI DESIGN
+     Viola di brand esteso + oro CWL/Raid. Font più morbido: Baloo 2
+     per i titoli (arrotondato, meno "da software gestionale"),
+     Nunito per il corpo testo (rounded sans, molto leggibile).
+     ============================================================ */
+  :root{
+    --viola-950:#0c0818; --viola-900:#150d2b; --viola-800:#1e1340;
+    --viola-700:#2a1a5c; --viola-600:#351c75; --viola-500:#4a3593;
+    --viola-300:#a99bd6; --oro:#D8A73E; --oro-chiaro:#f0cd7a;
+    --testo:#f3f0fa; --testo-dim:#b8aede;
+    --verde:#57BB8A; --giallo:#FFD666; --arancio:#F6B26B; --rosso:#F4777F;
+    --radius:20px; --radius-sm:12px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:'Nunito',sans-serif; font-weight:600;
+    background:
+      radial-gradient(circle at 12% -5%, var(--viola-700) 0%, transparent 42%),
+      radial-gradient(circle at 90% 5%, var(--viola-800) 0%, transparent 38%),
+      var(--viola-950);
+    color:var(--testo); min-height:100%; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand-name{ font-family:'Baloo 2',sans-serif; }
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--viola-500); border-radius:8px; }
+  svg{ display:block; }
+
+  /* ---------------- SCREENS (navigazione "vera", non semplice scroll) ---------------- */
+  .screen{
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    transform:translateX(100%); opacity:0; visibility:hidden;
+    transition:transform .38s cubic-bezier(.22,.9,.3,1), opacity .3s ease;
+  }
+  .screen.active{ transform:translateX(0); opacity:1; visibility:visible; }
+  .screen.behind{ transform:translateX(-18%); opacity:0; visibility:hidden; }
+
+  /* ---------------- LOGIN ---------------- */
+  #screen-login{ align-items:center; justify-content:center; padding:32px 20px; text-align:center; }
+  .login-emblem{ width:96px; height:96px; margin-bottom:18px; filter:drop-shadow(0 8px 22px rgba(216,167,62,.25)); }
+  .login-eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.2em; color:var(--viola-300); text-transform:uppercase; font-weight:700;}
+  .login-title{ font-size:30px; font-weight:800; color:#fff; margin:8px 0 6px; }
+  .login-sub{ font-size:13.5px; color:var(--testo-dim); margin-bottom:34px; font-weight:600; }
+  #g_signin_holder{ margin-bottom:18px; min-height:44px; }
+  .login-fallback{ font-size:12px; color:var(--viola-300); text-decoration:underline; cursor:pointer; font-weight:700; background:none; border:none; }
+  .login-error{ color:var(--rosso); font-size:12.5px; font-weight:700; margin-top:14px; min-height:16px; }
+
+  /* ---------------- TOPBAR + MENU A TENDINA ---------------- */
+  .topbar{
+    display:flex; align-items:center; gap:12px; padding:14px 18px;
+    background:rgba(12,8,24,.85); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--viola-700); flex-shrink:0; position:relative; z-index:30;
+  }
+  .emblem-btn{ width:40px; height:40px; border-radius:50%; border:none; background:none; padding:0; cursor:pointer; transition:.15s ease; }
+  .emblem-btn img{ width:100%; height:100%; }
+  .emblem-btn:hover{ transform:scale(1.06); }
+  .brand-name{ font-size:16px; font-weight:700; color:#fff; }
+  .topbar-spacer{ flex:1; }
+  .user-chip{ font-size:11.5px; color:var(--viola-300); font-weight:700; text-align:right; }
+  .user-chip small{ display:block; font-size:10px; color:var(--viola-500); font-weight:600; }
+
+  .dropdown{
+    position:absolute; top:64px; left:14px; z-index:40;
+    background:var(--viola-800); border:1px solid var(--viola-500); border-radius:16px;
+    padding:8px; min-width:220px; box-shadow:0 16px 40px rgba(0,0,0,.45);
+    opacity:0; transform:translateY(-8px) scale(.97); pointer-events:none; transition:.18s ease;
+  }
+  .dropdown.open{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .dropdown-item{
+    display:flex; align-items:center; gap:12px; width:100%; padding:11px 12px; border-radius:10px;
+    background:none; border:none; color:var(--testo); font-family:'Nunito',sans-serif; font-weight:700;
+    font-size:13.5px; cursor:pointer; text-align:left; transition:.12s ease;
+  }
+  .dropdown-item:hover{ background:var(--viola-700); color:var(--oro-chiaro); }
+  .dropdown-item svg{ width:19px; height:19px; flex-shrink:0; color:var(--oro); }
+  .dropdown-sep{ height:1px; background:var(--viola-700); margin:6px 4px; }
+
+  /* ---------------- PAGES ---------------- */
+  main{ flex:1; overflow-y:auto; padding:22px 18px 50px; }
+  .page{ display:none; max-width:720px; margin:0 auto; }
+  .page.active{ display:block; animation:fadeUp .32s ease; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; color:var(--oro); text-transform:uppercase; font-weight:700;}
+  .page-title{ font-size:23px; font-weight:800; color:#fff; margin:4px 0 20px; }
+
+  /* Pannelli liste (swipeabili) */
+  .swipe-wrap{ margin-bottom:16px; }
+  .swipe-track{
+    display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory;
+    padding:4px 4px 10px; -webkit-overflow-scrolling:touch;
+  }
+  .swipe-track::-webkit-scrollbar{ height:6px; }
+  .list-panel{
+    scroll-snap-align:center; flex:0 0 86%; background:rgba(255,255,255,.03);
+    border:1px solid var(--viola-700); border-radius:var(--radius); padding:18px;
+  }
+  .list-panel input.titolo{
+    width:100%; background:none; border:none; border-bottom:2px solid var(--viola-500);
+    color:var(--oro-chiaro); font-family:'Baloo 2',sans-serif; font-size:16px; font-weight:700;
+    padding:4px 2px 8px; margin-bottom:12px;
+  }
+  .list-panel input.titolo:focus{ outline:none; border-color:var(--oro); }
+  .list-panel textarea{
+    width:100%; min-height:220px; background:var(--viola-900); border:1px solid var(--viola-700);
+    border-radius:var(--radius-sm); color:var(--testo); font-family:'Nunito',sans-serif; font-weight:700;
+    font-size:13.5px; padding:12px 14px; resize:vertical; line-height:1.7;
+  }
+  .list-panel textarea:focus{ outline:none; border-color:var(--oro); }
+  .list-panel .hint{ font-size:10.5px; color:var(--viola-300); margin-top:8px; font-weight:600; }
+  .dots{ display:flex; justify-content:center; gap:7px; margin-bottom:20px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--viola-700); transition:.2s ease; }
+  .dot.on{ background:var(--oro); width:20px; border-radius:5px; }
+
+  .btn{
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:14px;
+    padding:14px 20px; border-radius:var(--radius-sm); border:none; cursor:pointer;
+    transition:.15s ease; display:flex; align-items:center; justify-content:center; gap:9px;
+  }
+  .btn svg{ width:18px; height:18px; }
+  .btn-block{ width:100%; }
+  .btn-oro{ background:linear-gradient(180deg,var(--oro-chiaro),var(--oro)); color:#241705; }
+  .btn-oro:hover{ filter:brightness(1.07); transform:translateY(-1px); }
+  .btn-oro:disabled{ opacity:.55; cursor:default; transform:none; }
+  .btn-ghost{ background:transparent; color:var(--viola-300); border:2px solid var(--viola-700); }
+  .btn-ghost:hover{ border-color:var(--oro); color:var(--oro); }
+
+  .page-actions{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+
+  /* Filter chips (stemmi clan) */
+  .chips{ display:flex; gap:9px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip{
+    display:flex; align-items:center; gap:7px; padding:7px 14px 7px 8px; border-radius:30px;
+    background:rgba(255,255,255,.03); border:2px solid var(--viola-700); cursor:pointer;
+    font-size:12px; font-weight:700; color:var(--testo-dim); transition:.15s ease;
+  }
+  .chip img{ width:19px; height:19px; border-radius:50%; object-fit:cover; }
+  .chip:hover{ border-color:var(--viola-500); color:#fff; }
+  .chip.on{ border-color:var(--oro); color:var(--oro); background:rgba(216,167,62,.08); }
+
+  /* Table */
+  .panel{ background:rgba(255,255,255,.025); border:1px solid var(--viola-700); border-radius:var(--radius); overflow:hidden; }
+  .table-scroll{ max-height:58vh; overflow-y:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{
+    position:sticky; top:0; z-index:5; background:var(--viola-800); color:var(--oro);
+    text-align:left; padding:12px 15px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    border-bottom:1px solid var(--viola-500); font-weight:800; font-family:'Nunito',sans-serif;
+  }
+  tbody td{ padding:11px 15px; border-top:1px solid var(--viola-800); font-weight:700; }
+  tbody tr{ opacity:0; animation:rowIn .35s ease forwards; }
+  @keyframes rowIn{ from{opacity:0; transform:translateX(-6px);} to{opacity:1; transform:translateX(0);} }
+  tbody tr:hover{ background:rgba(255,255,255,.03); }
+  .name-cell{ display:flex; align-items:center; gap:10px; }
+  .th-chip{ width:23px; height:23px; border-radius:7px; font-size:9.5px; display:flex; align-items:center; justify-content:center; font-weight:800; font-family:'JetBrains Mono',monospace; color:#221533; flex-shrink:0;}
+  .clan-cell, .lega-cell{ display:flex; align-items:center; gap:8px; }
+  .clan-cell img, .lega-cell img{ width:19px; height:19px; border-radius:50%; object-fit:cover; }
+  .cell-tag{ display:inline-block; padding:4px 10px; border-radius:7px; font-weight:800; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .num{ font-family:'JetBrains Mono',monospace; font-weight:700; }
+
+  .skeleton{ padding:18px; }
+  .sk-row{ height:36px; border-radius:8px; margin-bottom:8px; background:linear-gradient(90deg,var(--viola-800) 25%, var(--viola-700) 37%, var(--viola-800) 63%); background-size:400% 100%; animation:shimmer 1.4s ease infinite; }
+  @keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:-100% 0;} }
+  .empty{ padding:36px 18px; text-align:center; color:var(--testo-dim); font-size:13px; font-weight:700;}
+
+  .link-out{ font-size:12.5px; color:var(--viola-300); text-decoration:none; font-weight:800; align-self:center; }
+  .link-out:hover{ color:var(--oro); }
+
+  #toast-holder{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; width:calc(100% - 32px); max-width:400px; align-items:center; }
+  .toast{
+    padding:13px 20px; border-radius:14px; font-size:13px; font-weight:800; width:100%;
+    box-shadow:0 8px 24px rgba(0,0,0,.4); animation:toastIn .25s ease; border:1px solid var(--viola-500); text-align:center;
+  }
+  .toast.ok{ background:#173a2a; color:#8fe3b4; border-color:#2c6b48; }
+  .toast.err{ background:#3a1a1e; color:#f6a3a3; border-color:#7a3038; }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  .preview-banner{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#1e1340; border:1px solid #4a3593; color:#b8aede; padding:8px 16px; border-radius:20px; font-size:11px; z-index:150; font-weight:700; }
+
+  @media (max-width:640px){ .list-panel{ flex-basis:92%; } }
+</style>
+</head>
+<body>
+
+<!-- Icone SVG originali (nessuna emoji, nessun logo Supercell) -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9v-6h6v6h2.5a1 1 0 0 0 1-1v-9"/>
+  </symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/>
+  </symbol>
+  <symbol id="ic-swords" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20 18 6M20 4l-2 2M16 8l2 2M4 4l14 14M4 4l2 0M4 4l0 2"/>
+  </symbol>
+  <symbol id="ic-castle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 21V10l2-2V6h2v2l2-2v3l2-2 2 2V4h2v2l2 2V6h2v2l2 2v11"/><path d="M4 21h16"/><path d="M10 21v-5h4v5"/>
+  </symbol>
+  <symbol id="ic-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21a9 9 0 1 0-7.5-4L3 21l4.3-1.3A9 9 0 0 0 12 21z"/><path d="M9 11.3l2 2 4-4.3"/>
+  </symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 11A8 8 0 1 0 18.5 16"/><path d="M20 5v6h-6"/>
+  </symbol>
+  <symbol id="ic-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M9 8l-4 4 4 4"/><path d="M5 12h13"/>
+  </symbol>
+</svg>
+
+<!-- ================= LOGIN ================= -->
+<section id="screen-login" class="screen active">
+  <img class="login-emblem" src="icons/icon-192.png" alt="CWL Tools">
+  <div class="login-eyebrow">CWL Tools</div>
+  <div class="login-title">Accedi</div>
+  <div class="login-sub">Solo i profili autorizzati dal capo clan possono entrare</div>
+  <div id="g_signin_holder"></div>
+  <button class="login-fallback" id="btn-preview">Anteprima senza login →</button>
+  <div class="login-error" id="login-error"></div>
+</section>
+
+<!-- ================= APP ================= -->
+<section id="screen-app" class="screen">
+  <header class="topbar">
+    <button class="emblem-btn" id="btn-menu"><img src="icons/icon-192.png" alt="Menu"></button>
+    <div class="brand-name">CWL Tools</div>
+    <div class="topbar-spacer"></div>
+    <div class="user-chip" id="user-chip"></div>
+  </header>
+
+  <nav class="dropdown" id="dropdown">
+    <button class="dropdown-item" data-page="home"><svg><use href="#ic-home"/></svg> Liste CWL</button>
+    <button class="dropdown-item" data-page="clans"><svg><use href="#ic-shield"/></svg> I nostri Clan</button>
+    <button class="dropdown-item" data-page="cwl"><svg><use href="#ic-swords"/></svg> Recap CWL</button>
+    <button class="dropdown-item" data-page="raid"><svg><use href="#ic-castle"/></svg> Raid Weekend</button>
+    <div class="dropdown-sep"></div>
+    <button class="dropdown-item" id="menu-invia-whatsapp"><svg><use href="#ic-send"/></svg> Invia su WhatsApp</button>
+    <div class="dropdown-sep"></div>
+    <button class="dropdown-item" id="btn-logout"><svg><use href="#ic-out"/></svg> Esci</button>
+  </nav>
+
+  <main>
+    <!-- LISTE CWL (home) -->
+    <section class="page active" id="page-home">
+      <div class="eyebrow">Formazioni</div>
+      <div class="page-title">Liste CWL</div>
+
+      <div class="swipe-wrap">
+        <div class="swipe-track" id="swipe-track"></div>
+        <div class="dots" id="dots"></div>
+      </div>
+
+      <button class="btn btn-oro btn-block" id="btn-invia-liste"><svg><use href="#ic-send"/></svg> Invia su WhatsApp</button>
+    </section>
+
+    <!-- I NOSTRI CLAN -->
+    <section class="page" id="page-clans">
+      <div class="eyebrow">Roster</div>
+      <div class="page-title">I nostri Clan</div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" id="btn-refresh-clans"><svg><use href="#ic-refresh"/></svg> Aggiorna</button>
+      </div>
+      <div class="chips" id="clan-chips"></div>
+      <div class="panel"><div class="table-scroll" id="clans-table"><div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div><div class="sk-row"></div></div></div></div>
+    </section>
+
+    <!-- RECAP CWL -->
+    <section class="page" id="page-cwl">
+      <div class="eyebrow">Rendimento</div>
+      <div class="page-title">Recap CWL</div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" id="btn-refresh-cwl"><svg><use href="#ic-refresh"/></svg> Aggiorna</button>
+      </div>
+      <div class="panel"><div class="table-scroll" id="cwl-table"><div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div><div class="sk-row"></div></div></div></div>
+    </section>
+
+    <!-- RAID WEEKEND -->
+    <section class="page" id="page-raid">
+      <div class="eyebrow">Capitale</div>
+      <div class="page-title">Raid Weekend</div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" id="btn-refresh-raid"><svg><use href="#ic-refresh"/></svg> Aggiorna</button>
+        <button class="btn btn-oro" id="btn-invia-raid"><svg><use href="#ic-send"/></svg> Invia mancanti su WA</button>
+      </div>
+      <div class="panel"><div class="table-scroll" id="raid-table"><div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div><div class="sk-row"></div></div></div></div>
+    </section>
+  </main>
+</section>
+
+<div id="toast-holder"></div>
+
+<script>
+/* ============================================================
+   Rilevo se CLIENT_ID/APPS_SCRIPT_URL sono ancora placeholder
+   (es. in anteprima) per usare dati finti invece di bloccarmi.
+   ============================================================ */
+const NON_CONFIGURATO = typeof CLIENT_ID === 'undefined' || CLIENT_ID.indexOf('INCOLLA_QUI') === 0
+  || typeof APPS_SCRIPT_URL === 'undefined' || APPS_SCRIPT_URL.indexOf('INCOLLA_QUI') === 0;
+
+let session = null;
+let currentUser = null;
+
+function placeholderImg(lettera, colore){
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" rx="10" fill="${colore}"/><text x="20" y="26" font-family="Nunito, sans-serif" font-weight="800" font-size="16" fill="#1a1204" text-anchor="middle">${lettera}</text></svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+const DEMO_ROSTER = [
+  {interessato:true, nome:'DarkStriker', clan:'ITALY BEST', stelleWar:812, lega:'Leggende I', th:18, stemmaUrl:placeholderImg('IB','#D8A73E'), legaIconUrl:placeholderImg('L1','#4a3593'), colore:'#c9daf8'},
+  {interessato:true, nome:'ITA_Fenice', clan:'ITALY', stelleWar:640, lega:'Elettro (33)', th:17, stemmaUrl:placeholderImg('IT','#a99bd6'), legaIconUrl:placeholderImg('E3','#2a1a5c'), colore:'#cccccc'},
+  {interessato:false, nome:'MoonRaider', clan:'精神と時の部屋', stelleWar:501, lega:'Elettro (32)', th:16, stemmaUrl:placeholderImg('精','#F6B26B'), legaIconUrl:placeholderImg('E2','#2a1a5c'), colore:'#f9cb9c'},
+  {interessato:true, nome:'Kaisel92', clan:'ITALY BEST', stelleWar:733, lega:'Leggende II', th:15, stemmaUrl:placeholderImg('IB','#D8A73E'), legaIconUrl:placeholderImg('L2','#4a3593'), colore:'#d9d2e9'}
+];
+const DEMO_CWL = [
+  {nome:'DarkStriker', s1:'21/7', s2:'19/6', s3:'18/6', difesa:'4/7', colore:'#c9daf8', coloriStagioni:['#57BB8A','#A9CF54','#FFD666']},
+  {nome:'ITA_Fenice', s1:'18/6', s2:'21/7', s3:'N/D', difesa:'9/7', colore:'#cccccc', coloriStagioni:['#FFD666','#57BB8A','#F4777F']},
+  {nome:'Kaisel92', s1:'20/7', s2:'20/7', s3:'17/6', difesa:'6/7', colore:'#d9d2e9', coloriStagioni:['#57BB8A','#57BB8A','#A9CF54']}
+];
+const DEMO_RAID = [
+  {clan:'ITALY BEST', nome:'DarkStriker', attacchi:'6/6', bottino:52000, stato:'✅ Completo', colore:'#57BB8A'},
+  {clan:'ITALY', nome:'ITA_Fenice', attacchi:'3/6', bottino:21000, stato:'⚠️ Incompleto', colore:'#F6B26B'},
+  {clan:'精神と時の部屋', nome:'MoonRaider', attacchi:'0/6', bottino:0, stato:'❌ Non ha attaccato', colore:'#F4777F'}
+];
+const DEMO_LISTE = [
+  {numero:1, titolo:'ITALY BEST', nomi:['DarkStriker','Kaisel92','ITA_Fenice']},
+  {numero:2, titolo:'ITALY', nomi:['MoonRaider']},
+  {numero:3, titolo:'精神と時の部屋', nomi:[]},
+  {numero:4, titolo:'Riserve', nomi:[]}
+];
+
+/* ---------------- chiamata API ---------------- */
+async function api(action, extra={}){
+  if (NON_CONFIGURATO){
+    await new Promise(r=>setTimeout(r,400));
+    if (action==='login') return {ok:true, session:'demo', nome:'Anteprima', ruolo:'Modalità demo'};
+    if (action==='getRoster'||action==='refreshRoster') return {ok:true, dati:DEMO_ROSTER};
+    if (action==='getRecap'||action==='refreshRecap') return {ok:true, dati:DEMO_CWL};
+    if (action==='getRaid'||action==='refreshRaid') return {ok:true, dati:DEMO_RAID};
+    if (action==='getListe') return {ok:true, dati:DEMO_LISTE};
+    if (action==='getFormazioniUrl') return {ok:true, url:'#'};
+    if (action==='inviaListeTesto') return {ok:true, message:'(anteprima) liste inviate su WhatsApp'};
+    if (action==='inviaRaidMancanti') return {ok:true, message:'(anteprima) messaggio raid inviato'};
+    return {ok:true};
+  }
+
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // evita il preflight CORS
+      body: JSON.stringify(Object.assign({ action, session }, extra))
+    });
+    return await res.json();
+  }catch(e){
+    return { ok:false, error:'Errore di connessione al backend.' };
+  }
+}
+
+function toast(msg, ok=true){
+  const holder = document.getElementById('toast-holder');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok?'ok':'err');
+  el.textContent = msg;
+  holder.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 4200);
+}
+
+/* ---------------- navigazione a schermate ---------------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function gotoPage(id){
+  document.querySelectorAll('.dropdown-item[data-page]').forEach(b=>b.classList.toggle('active', b.dataset.page===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id==='page-'+id));
+  closeMenu();
+  if (id==='clans' && !state.clansLoaded) loadClans();
+  if (id==='cwl' && !state.cwlLoaded) loadCwl();
+  if (id==='raid' && !state.raidLoaded) loadRaid();
+}
+const state = { clansLoaded:false, cwlLoaded:false, raidLoaded:false, roster:[], clanFilter:null };
+
+/* ---------------- menu a tendina ---------------- */
+const dropdown = document.getElementById('dropdown');
+function toggleMenu(){ dropdown.classList.toggle('open'); }
+function closeMenu(){ dropdown.classList.remove('open'); }
+document.getElementById('btn-menu').onclick = toggleMenu;
+document.addEventListener('click', (e)=>{
+  if (!dropdown.contains(e.target) && e.target.id!=='btn-menu' && !e.target.closest('#btn-menu')) closeMenu();
+});
+document.querySelectorAll('.dropdown-item[data-page]').forEach(b=> b.onclick = ()=>gotoPage(b.dataset.page));
+document.getElementById('menu-invia-whatsapp').onclick = ()=>{ gotoPage('home'); document.getElementById('btn-invia-liste').click(); };
+document.getElementById('btn-logout').onclick = ()=>{
+  session = null; currentUser = null;
+  showScreen('screen-login');
+};
+
+/* ================= LOGIN ================= */
+document.getElementById('btn-preview').onclick = ()=> loginRiuscito({ok:true, session:'demo', nome:'Anteprima', ruolo:'Senza login'});
+
+async function onGoogleSignIn(response){
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  const res = await api('login', { idToken: response.credential });
+  if (res.ok) loginRiuscito(res);
+  else errEl.textContent = res.error || 'Accesso non riuscito.';
+}
+function loginRiuscito(res){
+  session = res.session;
+  currentUser = { nome:res.nome, ruolo:res.ruolo };
+  document.getElementById('user-chip').innerHTML = res.nome + '<small>'+ (res.ruolo||'') +'</small>';
+  showScreen('screen-app');
+  initApp();
+}
+
+try{
+  if (!NON_CONFIGURATO && window.google && google.accounts){
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onGoogleSignIn });
+    google.accounts.id.renderButton(document.getElementById('g_signin_holder'), { theme:'filled_black', size:'large', shape:'pill', text:'signin_with' });
+  } else {
+    document.getElementById('g_signin_holder').innerHTML = '<span style="color:var(--testo-dim);font-size:12px;">Login Google non ancora configurato</span>';
+  }
+}catch(e){
+  document.getElementById('g_signin_holder').innerHTML = '<span style="color:var(--testo-dim);font-size:12px;">Login Google non disponibile in anteprima</span>';
+}
+
+/* ================= INIT APP ================= */
+function initApp(){
+  loadListe();
+  api('getFormazioniUrl').then(r=>{ /* riservato per usi futuri */ });
+}
+
+/* ================= LISTE CWL (pannelli editabili, swipeabili) ================= */
+async function loadListe(){
+  const res = await api('getListe');
+  const liste = (res.dati && res.dati.length) ? res.dati : [1,2,3,4].map(n=>({numero:n, titolo:'Lista '+n, nomi:[]}));
+  renderListe(liste);
+}
+function renderListe(liste){
+  const track = document.getElementById('swipe-track');
+  const dots = document.getElementById('dots');
+  track.innerHTML = ''; dots.innerHTML = '';
+
+  liste.forEach((lista, i)=>{
+    const panel = document.createElement('div');
+    panel.className = 'list-panel';
+    panel.innerHTML = `
+      <input class="titolo" data-idx="${i}" value="${(lista.titolo||'Lista '+(i+1)).replace(/"/g,'&quot;')}">
+      <textarea data-idx="${i}" placeholder="Un nome per riga…">${(lista.nomi||[]).join('\n')}</textarea>
+      <div class="hint">Lista ${lista.numero||i+1} · un giocatore per riga</div>
+    `;
+    track.appendChild(panel);
+
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i===0?' on':'');
+    dots.appendChild(dot);
+  });
+
+  track.onscroll = ()=>{
+    const idx = Math.round(track.scrollLeft / track.clientWidth);
+    [...dots.children].forEach((d,i)=>d.classList.toggle('on', i===idx));
+  };
+}
+function leggiListeDaiPannelli(){
+  const titoli = [...document.querySelectorAll('.list-panel input.titolo')];
+  const aree = [...document.querySelectorAll('.list-panel textarea')];
+  return titoli.map((t,i)=>({
+    numero: i+1,
+    titolo: t.value.trim() || ('Lista '+(i+1)),
+    nomi: aree[i].value.split('\n').map(s=>s.trim()).filter(Boolean)
+  }));
+}
+document.getElementById('btn-invia-liste').onclick = async (e)=>{
+  const liste = leggiListeDaiPannelli();
+  e.target.disabled = true;
+  const testoOriginale = e.target.innerHTML;
+  e.target.innerHTML = '<svg><use href="#ic-send"/></svg> Invio in corso…';
+  const res = await api('inviaListeTesto', { liste });
+  toast(res.ok ? (res.message||'Liste inviate') : res.error, res.ok);
+  e.target.disabled = false;
+  e.target.innerHTML = testoOriginale;
+};
+
+/* ================= I NOSTRI CLAN ================= */
+async function loadClans(){
+  const res = await api('getRoster');
+  state.roster = res.dati || [];
+  state.clansLoaded = true;
+  renderClanChips(state.roster);
+  renderClansTable(state.roster);
+}
+function renderClanChips(dati){
+  const wrap = document.getElementById('clan-chips');
+  wrap.innerHTML = '';
+  const tutti = document.createElement('div');
+  tutti.className = 'chip' + (state.clanFilter===null?' on':'');
+  tutti.textContent = 'Tutti i clan';
+  tutti.onclick = ()=>{ state.clanFilter=null; renderClanChips(dati); renderClansTable(dati); };
+  wrap.appendChild(tutti);
+  const visti = {};
+  dati.forEach(m=>{
+    if (visti[m.clan]) return; visti[m.clan]=true;
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (state.clanFilter===m.clan?' on':'');
+    chip.innerHTML = (m.stemmaUrl?`<img src="${m.stemmaUrl}" onerror="this.style.visibility='hidden'">`:'') + m.clan;
+    chip.onclick = ()=>{ state.clanFilter=m.clan; renderClanChips(dati); renderClansTable(dati); };
+    wrap.appendChild(chip);
+  });
+}
+function renderClansTable(dati){
+  const tbl = document.getElementById('clans-table');
+  const filtrati = state.clanFilter ? dati.filter(m=>m.clan===state.clanFilter) : dati;
+  if (!filtrati.length){ tbl.innerHTML = '<div class="empty">Nessun giocatore trovato.</div>'; return; }
+  let html = '<table><thead><tr><th>Nome</th><th>Clan</th><th>Stelle in War</th><th>Lega</th></tr></thead><tbody>';
+  filtrati.forEach((m,i)=>{
+    html += `<tr style="animation-delay:${Math.min(i*30,600)}ms">
+      <td><div class="name-cell"><span class="th-chip" style="background:${m.colore||'#4a3593'}">${m.th||''}</span>${m.nome}</div></td>
+      <td><div class="clan-cell">${m.stemmaUrl?`<img src="${m.stemmaUrl}" onerror="this.style.visibility='hidden'">`:''}${m.clan}</div></td>
+      <td class="num">${m.stelleWar}</td>
+      <td><div class="lega-cell">${m.legaIconUrl?`<img src="${m.legaIconUrl}" onerror="this.style.visibility='hidden'">`:''}${m.lega}</div></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody></table>';
+}
+document.getElementById('btn-refresh-clans').onclick = async ()=>{
+  document.getElementById('clans-table').innerHTML = '<div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div></div>';
+  const res = await api('refreshRoster');
+  state.roster = res.dati || [];
+  renderClanChips(state.roster); renderClansTable(state.roster);
+  toast('Elenco aggiornato');
+};
+
+/* ================= RECAP CWL ================= */
+async function loadCwl(){
+  const res = await api('getRecap');
+  state.cwlLoaded = true;
+  renderCwlTable(res.dati || []);
+}
+function renderCwlTable(dati){
+  const tbl = document.getElementById('cwl-table');
+  if (!dati.length){ tbl.innerHTML = '<div class="empty">Nessun dato.</div>'; return; }
+  let html = '<table><thead><tr><th>Nome</th><th>Ultima</th><th>Penultima</th><th>Terzultima</th><th>Difesa</th></tr></thead><tbody>';
+  dati.forEach((r,i)=>{
+    const c = r.coloriStagioni || ['','',''];
+    html += `<tr style="animation-delay:${Math.min(i*30,600)}ms">
+      <td><div class="name-cell"><span class="th-chip" style="background:${r.colore||'#4a3593'}"></span>${r.nome}</div></td>
+      <td><span class="cell-tag" style="background:${c[0]||'#2a1a5c'};color:#1a1204">${r.s1}</span></td>
+      <td><span class="cell-tag" style="background:${c[1]||'#2a1a5c'};color:#1a1204">${r.s2}</span></td>
+      <td><span class="cell-tag" style="background:${c[2]||'#2a1a5c'};color:#1a1204">${r.s3}</span></td>
+      <td class="num">${r.difesa}</td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody></table>';
+}
+document.getElementById('btn-refresh-cwl').onclick = async ()=>{
+  document.getElementById('cwl-table').innerHTML = '<div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div></div>';
+  const res = await api('refreshRecap');
+  renderCwlTable(res.dati || []);
+  toast('Recap CWL aggiornato');
+};
+
+/* ================= RAID WEEKEND ================= */
+async function loadRaid(){
+  const res = await api('getRaid');
+  state.raidLoaded = true;
+  renderRaidTable(res.dati || []);
+}
+function renderRaidTable(dati){
+  const tbl = document.getElementById('raid-table');
+  if (!dati.length){ tbl.innerHTML = '<div class="empty">Nessun dato.</div>'; return; }
+  let html = '<table><thead><tr><th>Clan</th><th>Nome</th><th>Attacchi</th><th>Bottino</th><th>Stato</th></tr></thead><tbody>';
+  dati.forEach((r,i)=>{
+    html += `<tr style="animation-delay:${Math.min(i*30,600)}ms">
+      <td>${r.clan}</td><td>${r.nome}</td>
+      <td><span class="cell-tag" style="background:${r.colore||'#2a1a5c'};color:#1a1204">${r.attacchi}</span></td>
+      <td class="num">${r.bottino}</td><td>${r.stato}</td>
+    </tr>`;
+  });
+  tbl.innerHTML = html + '</tbody></table>';
+}
+document.getElementById('btn-refresh-raid').onclick = async ()=>{
+  document.getElementById('raid-table').innerHTML = '<div class="skeleton"><div class="sk-row"></div><div class="sk-row"></div></div>';
+  const res = await api('refreshRaid');
+  renderRaidTable(res.dati || []);
+  toast('Raid Weekend aggiornato');
+};
+document.getElementById('btn-invia-raid').onclick = async (e)=>{
+  e.target.disabled = true;
+  const orig = e.target.innerHTML;
+  e.target.innerHTML = '<svg><use href="#ic-send"/></svg> Invio…';
+  const res = await api('inviaRaidMancanti');
+  toast(res.ok ? (res.message||'Inviato') : res.error, res.ok);
+  e.target.disabled = false; e.target.innerHTML = orig;
+};
+
+/* ================= Service worker (PWA) ================= */
+if ('serviceWorker' in navigator && !NON_CONFIGURATO){
+  navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+}
+
+if (NON_CONFIGURATO){
+  const banner = document.createElement('div');
+  banner.className = 'preview-banner';
+  banner.textContent = '🔎 Anteprima — configura config.js per collegare i dati reali';
+  document.body.appendChild(banner);
+}
+</script>
+</body>
+</html>
